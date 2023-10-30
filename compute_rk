@@ -1,0 +1,18 @@
+#!/bin/python3
+
+b = 256
+prime = (1 << 61) - 1
+
+def rk(s):
+    h = 0
+    base = 1
+    for i in range(len(s)):
+        h = (h + ((base * ord(s[i])) % prime)) % prime
+        base = (base * b) % prime
+    return h
+
+
+s = 'GGGAACTTCTTCT'
+print(s)
+print(rk(s[3:6]))
+print(rk("ATTCGGATTAGGATTAGG"))

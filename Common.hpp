@@ -1,7 +1,9 @@
 #ifndef INCLUDE_GUARD_Common
 #define INCLUDE_GUARD_Common
 
+#include <cstdint>
 #include <stdint.h> // include uint64_t etc.
+#include <cassert>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -18,6 +20,118 @@ struct PairT
     return (this->left < another.left) || ((this->left == another.left) && this->right < another.right);
   };
 };
+
+const uint64_t mersenne_prime_exponent = 61;
+const uint64_t prime = ((uint64_t)1 << mersenne_prime_exponent) - 1; // 2^61 - 1
+
+///////////////////////////////////////////// from Dominik
+
+std::uint64_t mod_mersenne(std::uint64_t a) {
+  const std::uint64_t k = mersenne_prime_exponent;
+  std::uint64_t p = ((std::uint64_t)1 << k) - 1;
+  if (k < 32) {
+
+    // We need to check if a <= 2^(2k).
+    const std::uint64_t threshold = ((std::uint64_t)1 << (k << 1));
+    if (a <= threshold) {
+      a = (a & p) + (a >> k);
+      a = (a & p) + (a >> k);
+      return a == p ? 0 : a;
+    } else return a % p;
+  } else {
+
+    // We are guaranteed that a < 2^(2k)
+    // because a < 2^64 <= 2^(2k).
+    a = (a & p) + (a >> k);
+    a = (a & p) + (a >> k);
+    return a == p ? 0 : a;
+  }
+}
+
+
+std::uint64_t mul_mod_mersenne(
+    const std::uint64_t a,
+    const std::uint64_t b) {
+  const uint32_t k = mersenne_prime_exponent;
+  const std::uint64_t p = ((std::uint64_t)1 << k) - 1;
+  __extension__ const unsigned __int128 ab =
+    (unsigned __int128)a *
+    (unsigned __int128)b;
+  std::uint64_t lo = (std::uint64_t)ab;
+  const std::uint64_t hi = (ab >> 64);
+  lo = (lo & p) + ((lo >> k) + (hi << (64 - k)));
+  lo = (lo & p) + (lo >> k);
+  return lo == p ? 0 : lo;
+}
+
+std::uint64_t pow_mod_mersenne(
+    const std::uint64_t a,
+    std::uint64_t n) {
+  const uint32_t k = mersenne_prime_exponent;
+  std::uint64_t pow = mod_mersenne(a);
+  std::uint64_t ret = mod_mersenne(1);
+  while (n > 0) {
+    if (n & 1)
+      ret = mul_mod_mersenne(ret, pow);
+    pow = mul_mod_mersenne(pow, pow);
+    n >>= 1;
+  }
+  return ret;
+}
+
+std::uint64_t concat(
+    const std::uint64_t left_hash,
+    const std::uint64_t right_hash,
+    const std::uint64_t right_len,
+    const std::uint64_t base) {
+  return mod_mersenne(left_hash + mul_mod_mersenne(pow_mod_mersenne(base, right_len), right_hash));
+  const std::uint64_t pow = pow_mod_mersenne(
+      base, right_len);
+  const std::uint64_t tmp = mul_mod_mersenne(
+      left_hash, pow);
+  const std::uint64_t ret = mod_mersenne(
+      tmp + right_hash);
+  return ret;
+}
+
+//////////////////////////////////////////// until here
+
+std::uint64_t hash_char(const char c) {
+  return mod_mersenne((std::uint64_t)c);
+}
+
+void precompute_pattern_hashes(
+          const std::string &pattern,
+          std::vector<uint64_t> &hashes,
+          std::vector<uint64_t> &powers,
+          uint64_t base) {
+    int m = pattern.size();
+    hashes.resize(m);
+    powers.resize(m);
+
+    uint64_t h = 0, b = 1;
+    for (std::uint64_t i = 0; i < m; i++) {
+      h = mod_mersenne(h + mul_mod_mersenne(b, pattern[i]));
+      hashes[i] = h;
+      powers[i] = b;
+      b = mul_mod_mersenne(b, base);
+    }
+    std::cout << "final pattern hash = " << hashes[m-1] << std::endl;
+}
+
+uint64_t compute_subpattern_hash(const std::vector<uint64_t> &prefix_hashes,
+                                 const std::vector<uint64_t> &base_powers,
+                                 const int i,
+                                 const int j) {
+    if (i == 0) return prefix_hashes[j];
+    uint64_t pref_j = prefix_hashes[j];
+    uint64_t pref_i = prefix_hashes[i - 1];
+
+    //std::cout << pref_i << " " << pref_j <<  " " << pow_mod_mersenne(base_powers[i - 1], prime-2) << std::endl;
+    uint64_t base_pow_inv = pow_mod_mersenne(base_powers[i], prime-2);
+    if (pref_i > pref_j) pref_j = (pref_j + prime) % prime;
+    return mul_mod_mersenne(pref_j - pref_i, base_pow_inv);
+}
 
 
 void padVLine
@@ -154,6 +268,54 @@ void getPrefixPath
   }
 }
 
+template<class SlpT>
+void completePrefixPath
+(
+ const SlpT & slp,
+ std::stack<typename SlpT::nodeT> & path,
+ std::stack<uint64_t> & positions
+ ) {
+  auto n = path.top();
+  while (std::get<0>(path.top()) > 1) {
+    std::cout << "n.size = " << std::get<0>(n) << std::endl;
+    n = slp.getChildNode(path.top(), 0);
+    path.push(n);
+    positions.push(0);
+  }
+}
+
+template<class SlpT>
+void getPrefixPathWithPositions
+(
+ const SlpT & slp,
+ std::stack<typename SlpT::nodeT> & path,
+ std::stack<uint64_t> & positions,
+ uint64_t pos
+) {
+  if (pos >= slp.getLen()) {
+    return;
+  }
+  //path.push(slp.getRootNode());
+  //positions.push(pos);
+  //if (pos) {
+  //path.push(slp.getRootNode());
+  //positions.push(pos);
+  path.push(slp.getChildNodeForPos_Root(pos));
+  positions.push(pos);
+  //}
+  //while (pos) {
+  //  path.push(slp.getChildNodeForPos(path.top(), pos)); // pos is modified to relative pos in a node
+  //  std::cout << "node id: " << std::get<1>(path.top()) << std::endl;
+  //  positions.push(pos);
+  //}
+  auto n = path.top();
+  while (std::get<0>(path.top()) > 1) {
+    n = slp.getChildNodeForPos(path.top(), pos);
+    path.push(n);
+    positions.push(pos);
+  }
+  assert(std::get<0>(path.top()) == pos);
+}
 
 /*!
  * modify the stack 'path' to point the highest node that is adjacent to the node path.top()
@@ -246,6 +408,103 @@ uint64_t lceToR
   }
   return l;
 }
+
+template<class SlpT>
+uint64_t match_length_query
+(
+    const SlpT & slp,
+    const uint64_t pos_s, // position in the string
+    const uint64_t pos_p // position in the pattern
+)
+{
+    std::stack<typename SlpT::nodeT> path;
+    std::stack<uint64_t> positions;
+    getPrefixPathWithPositions(slp, path, positions, pos_s);
+
+    assert(path.size() == positions.size());
+    assert(positions.top() == 0);
+
+    // let's go UP as much as we can
+    auto x = path.top();
+    path.pop();
+    auto p = positions.top();
+    positions.pop();
+
+    uint64_t node = std::get<1>(x);
+    bool direction = true;
+    uint64_t prefix_hash = slp.subpattern_hash(pos_p, pos_p); // hash of the first prefix character
+    //std :: cout << "ph: " << prefix_hash << std:: endl;
+    uint64_t subpattern_hash = 0; // hash of the first prefix character
+    uint64_t pattern_prefix_len = 1;
+
+    if (node != prefix_hash) return 0;
+    //for (int i = 0; i < 10; i++) std::cout << slp.charAt(pos_s+i);
+    //std::cout << std::endl;
+
+    // ASCENT
+    while (!path.empty()) {
+        //std::cout << " pos: " << p  << " left len: " << slp.getNodeLen(left_sibling) << " right len: " << slp.getNodeLen(right_sibling) << std::endl; 
+        //std::cout << "subpattern hash: " << p_hash << std::endl; 
+        ///std::cout << "len: " << std::get<0>(x) << " hash: " << slp.get_hash(std::get<1>(x)) << std::endl;
+        if (!direction) { // I come from the left child, the prefix can be extended
+          uint64_t right_child = slp.getRight(node - slp.getAlphSize());
+          uint64_t right_child_len = slp.getNodeLen(right_child);
+          uint64_t right_hash = slp.getNodeHash(right_child);
+
+          if ((pos_p + pattern_prefix_len + right_child_len) >= slp.getPatternLen()) break;
+          std::cout << "came from left: " << std::endl;
+          prefix_hash = concat(prefix_hash, right_hash, pattern_prefix_len, slp.getAlphSize());
+          subpattern_hash = slp.subpattern_hash(pos_p, pos_p+pattern_prefix_len+right_child_len-1);
+          if (prefix_hash != subpattern_hash) break;
+          pattern_prefix_len += right_child_len;
+
+          //std::cout << "rl:" << right_child_len << "rh: " << right_hash << std::endl;
+          //std::cout << "pattern pref len: " << pattern_prefix_len<< std::endl;
+          //std::cout << " slp_prefix_hash: " << prefix_hash << " subpattern hash: " << subpattern_hash << std::endl;
+          assert(prefix_hash == subpattern_hash);
+        }
+
+        //std::cout << "act len: " << std::get<0>(x) << " direction: " << direction
+        //<< " pattern_prefix_len: " << pattern_prefix_len << std::endl;
+        direction = std::get<2>(x);
+        x = path.top();
+        path.pop();
+        p = positions.top();
+        positions.pop();
+        node = std::get<1>(x);
+    }
+    std::cout << "act len: " << std::get<0>(x) <<  " preflen:" << pattern_prefix_len << std::endl;
+
+    node = slp.getRight(node - slp.getAlphSize());
+    // RE-DESCENT
+    while (true) {
+      if (node < slp.getAlphSize()) {
+        uint64_t last_char = slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+pattern_prefix_len);
+        pattern_prefix_len += (node == last_char);
+        break;
+      }
+      std::cout << "act len: " << slp.getNodeLen(node) <<  " preflen:" << pattern_prefix_len << std::endl;
+      uint64_t left_child = slp.getLeft(node - slp.getAlphSize());
+      uint64_t right_child = slp.getRight(node - slp.getAlphSize());
+      uint64_t left_size = slp.getNodeLen(left_child);
+      uint64_t left_hash = slp.getNodeHash(left_child);
+      uint64_t candidate_hash = slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+pattern_prefix_len+left_size-1);
+      std::cout << "left_size: " << left_size << std::endl;
+      std::cout << "left_hash: " << left_hash << " prefix_hash: " << candidate_hash << std::endl;
+      if ((pattern_prefix_len + left_size > slp.getPatternLen()) || (left_hash != candidate_hash)) {
+          std::cout << "going left: " << std::endl;
+          node = left_child;
+      } else {
+        node = right_child;
+          std::cout << "going right: " << std::endl;
+        pattern_prefix_len += left_size;
+      }
+    }
+
+    std::cout << "ans: " << pattern_prefix_len << std::endl;
+    return pattern_prefix_len;
+}
+
 
 template<class SlpT>
 uint64_t lceToRBounded
