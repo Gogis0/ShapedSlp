@@ -409,8 +409,8 @@ public:
           hashVec[i] = concat(l_hash, r_hash, len_left, getAlphSize());
           //std::cout << "hashVec[" << i << "] = " << hashVec[i] << std::endl;
       }
-      std::cout << "hashVec[" << getNumRules()-1 << "] = " << hashVec[getNumRules()-1] << std::endl;
-      std::cout << std::endl;
+      //std::cout << "hashVec[" << getNumRules()-1 << "] = " << hashVec[getNumRules()-1] << std::endl;
+      //std::cout << std::endl;
     }
 
 

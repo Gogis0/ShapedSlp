@@ -29,24 +29,28 @@ Test(misc, pattern_hash) {
     cr_assert(compute_subpattern_hash(hashes, powers, 3, 5) == 4407617);
 }
 
-//Test(misc, save_load_bigrepair) {
-//    const string filename = "../data/tiny";
-//    NaiveSlp<uint32_t> slp;
-//    slp.load_Bigrepair(filename.data(), false);
-//    slp.makeBinaryTree();
-//    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp;
-//    pslp.init(slp);
-//    uint64_t hash_whole = pslp.getHashWhole();
-//
-//    const string filename_serialized = "../data/tiny.plainslp";
-//    ofstream out (filename_serialized);
-//    pslp.serialize(out);
-//    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp_new;
-//    ifstream in (filename_serialized);
-//    pslp_new.load(in);
-//
-//    cr_assert(pslp_new.getHashWhole() == hash_whole);
-//}
+Test(misc, save_load_bigrepair) {
+    const string filename = "../data/tiny";
+    const string filename_serialized = filename + ".plainslp.tmp";
+    NaiveSlp<uint32_t> slp;
+    slp.load_Bigrepair(filename.data(), false);
+    slp.makeBinaryTree();
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp;
+    pslp.init(slp);
+    uint64_t hash_whole = pslp.getHashWhole();
+    ofstream out (filename_serialized);
+    pslp.serialize(out);
+    out.flush();
+    out.close();
+
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp_new;
+    ifstream in (filename_serialized);
+    pslp_new.load(in);
+    pslp_new.printStatus(true);
+    in.close();
+
+    cr_assert(pslp_new.getHashWhole() == hash_whole);
+}
 
 Test(misc, tiny_slp_mlq) {
     const string in = "../data/tiny";
