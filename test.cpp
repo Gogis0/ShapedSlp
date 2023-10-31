@@ -46,7 +46,7 @@ Test(misc, save_load_bigrepair) {
     PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp_new;
     ifstream in (filename_serialized);
     pslp_new.load(in);
-    pslp_new.printStatus(true);
+    //pslp_new.printStatus(true);
     in.close();
 
     cr_assert(pslp_new.getHashWhole() == hash_whole);

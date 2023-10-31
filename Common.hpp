@@ -116,7 +116,7 @@ void precompute_pattern_hashes(
       powers[i] = b;
       b = mul_mod_mersenne(b, base);
     }
-    std::cout << "final pattern hash = " << hashes[m-1] << std::endl;
+    //std::cout << "final pattern hash = " << hashes[m-1] << std::endl;
 }
 
 uint64_t compute_subpattern_hash(const std::vector<uint64_t> &prefix_hashes,
@@ -452,7 +452,7 @@ uint64_t match_length_query
           uint64_t right_hash = slp.getNodeHash(right_child);
 
           if ((pos_p + pattern_prefix_len + right_child_len) >= slp.getPatternLen()) break;
-          std::cout << "came from left: " << std::endl;
+          //std::cout << "came from left: " << std::endl;
           prefix_hash = concat(prefix_hash, right_hash, pattern_prefix_len, slp.getAlphSize());
           subpattern_hash = slp.subpattern_hash(pos_p, pos_p+pattern_prefix_len+right_child_len-1);
           if (prefix_hash != subpattern_hash) break;
@@ -473,7 +473,7 @@ uint64_t match_length_query
         positions.pop();
         node = std::get<1>(x);
     }
-    std::cout << "act len: " << std::get<0>(x) <<  " preflen:" << pattern_prefix_len << std::endl;
+    //std::cout << "act len: " << std::get<0>(x) <<  " preflen:" << pattern_prefix_len << std::endl;
 
     node = slp.getRight(node - slp.getAlphSize());
     // RE-DESCENT
@@ -483,25 +483,25 @@ uint64_t match_length_query
         pattern_prefix_len += (node == last_char);
         break;
       }
-      std::cout << "act len: " << slp.getNodeLen(node) <<  " preflen:" << pattern_prefix_len << std::endl;
+      //std::cout << "act len: " << slp.getNodeLen(node) <<  " preflen:" << pattern_prefix_len << std::endl;
       uint64_t left_child = slp.getLeft(node - slp.getAlphSize());
       uint64_t right_child = slp.getRight(node - slp.getAlphSize());
       uint64_t left_size = slp.getNodeLen(left_child);
       uint64_t left_hash = slp.getNodeHash(left_child);
       uint64_t candidate_hash = slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+pattern_prefix_len+left_size-1);
-      std::cout << "left_size: " << left_size << std::endl;
-      std::cout << "left_hash: " << left_hash << " prefix_hash: " << candidate_hash << std::endl;
+      //std::cout << "left_size: " << left_size << std::endl;
+      //std::cout << "left_hash: " << left_hash << " prefix_hash: " << candidate_hash << std::endl;
       if ((pattern_prefix_len + left_size > slp.getPatternLen()) || (left_hash != candidate_hash)) {
-          std::cout << "going left: " << std::endl;
+          //std::cout << "going left: " << std::endl;
           node = left_child;
       } else {
         node = right_child;
-          std::cout << "going right: " << std::endl;
+          //std::cout << "going right: " << std::endl;
         pattern_prefix_len += left_size;
       }
     }
 
-    std::cout << "ans: " << pattern_prefix_len << std::endl;
+    //std::cout << "ans: " << pattern_prefix_len << std::endl;
     return pattern_prefix_len;
 }
 
