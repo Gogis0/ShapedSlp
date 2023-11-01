@@ -149,7 +149,31 @@ Test(misc, larger_randomized) {
     std::string pattern = ss.str();
     const size_t m = pattern.length();
     pslp.precompute_pattern(pattern);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1000; i++) {
+        const size_t pos1 = rand() % m;
+        const size_t pos2 = rand() % m;
+        const size_t lce_regular = lceToR(pslp, pos1, pos2);
+        const size_t lce_mlq = match_length_query(pslp, pos1, pos2);
+        //std::cout << pos1 << " " << pos2 << " " << lce_regular << " " << lce_mlq << std::endl;
+        cr_assert(lce_regular == lce_mlq);
+    }
+}
+
+Test(misc, chr19_randomized) {
+    const string filename = "../data/chr19.1.fa";
+    NaiveSlp<uint32_t> slp;
+    slp.load_Bigrepair(filename.data(), false);
+    slp.makeBinaryTree();
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp;
+    pslp.init(slp);
+
+    ifstream in(filename);
+    stringstream ss;
+    ss << in.rdbuf();
+    std::string pattern = ss.str();
+    const size_t m = pattern.length();
+    pslp.precompute_pattern(pattern);
+    for (int i = 0; i < 100000; i++) {
         const size_t pos1 = rand() % m;
         const size_t pos2 = rand() % m;
         const size_t lce_regular = lceToR(pslp, pos1, pos2);
