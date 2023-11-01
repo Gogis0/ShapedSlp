@@ -1,11 +1,20 @@
+#include <criterion/assert.h>
 #include <criterion/criterion.h>
+#include <criterion/internal/assert.h>
+#include <cstddef>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <queue>
+#include <cstdlib> 
 #include "Common.hpp"
 #include "PlainSlp.hpp"
 #include "FixedBitLenCode.hpp"
 using namespace std;
+
+Test(misc, powmod) {
+    cr_assert(pow_mod_mersenne(18014398509481984, 2305843009213693949) == 128);
+}
 
 Test(misc, tiny_slp) {
     const string in = "../data/tiny";
@@ -18,7 +27,7 @@ Test(misc, tiny_slp) {
     cr_assert(pslp.getHashWhole() == 2225879177060430003);
 }
 
-Test(misc, pattern_hash) {
+Test(misc, pattern_hash_small) {
     string p = "GGGAACTTCTTCT";
     vector<uint64_t> hashes, powers;
     const int base = 256;
@@ -28,6 +37,23 @@ Test(misc, pattern_hash) {
     cr_assert(compute_subpattern_hash(hashes, powers, 3, 3) == 65);
     cr_assert(compute_subpattern_hash(hashes, powers, 3, 5) == 4407617);
 }
+
+Test(misc, pattern_hash_larger) {
+    const string filename = "../data/larger";
+    ifstream in(filename);
+    stringstream ss;
+    ss << in.rdbuf();
+    std::string pattern = ss.str();
+    const size_t m = pattern.length();
+    
+    vector<uint64_t> hashes, powers;
+    const int base = 256;
+    precompute_pattern_hashes(pattern, hashes, powers, base);
+    for (int i = 0; i < m; i++) {
+        cr_assert(compute_subpattern_hash(hashes, powers, i, i) ==  hash_char(pattern[i]));
+    }
+}
+
 
 Test(misc, save_load_bigrepair) {
     const string filename = "../data/tiny";
@@ -68,11 +94,34 @@ Test(misc, tiny_slp_mlq) {
     cr_assert(match_length_query(pslp, 4, 10) == 8);
     cr_assert(match_length_query(pslp, 3, 5) == 0);
     cr_assert(match_length_query(pslp, 1, 7) == 2);
+    cr_assert(match_length_query(pslp, 3, 8) == 0);
     cr_assert(match_length_query(pslp, 0, 0) == m);
     cr_assert(match_length_query(pslp, m-1, m-1) == 1);
 }
 
-Test(misc, chr19_slp) {
+
+Test(misc, larger_slp_mlq) {
+    const string filename = "../data/larger";
+    NaiveSlp<uint32_t> slp;
+    slp.load_Bigrepair(filename.data(), false);
+    slp.makeBinaryTree();
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp;
+    pslp.init(slp);
+
+
+    ifstream in(filename);
+    stringstream ss;
+    ss << in.rdbuf();
+    std::string pattern = ss.str();
+    const size_t m = pattern.length();
+    pslp.precompute_pattern(pattern);
+    
+    //cout << pattern[38] << endl;
+    cr_assert(match_length_query(pslp, 112, 38) == 1);
+    cr_assert(match_length_query(pslp, 121, 54) == 1);
+}
+
+Test(misc, chr19_slp_seq) {
     const string in = "../data/chr19.1.fa";
     NaiveSlp<uint32_t> slp;
     slp.load_Bigrepair(in.data(), false);
@@ -85,4 +134,27 @@ Test(misc, chr19_slp) {
     cr_assert(match_length_query(pslp, 90000, 3) == 9);
     cr_assert(match_length_query(pslp, 90001, 4) == 8);
     cr_assert(match_length_query(pslp, 90002, 5) == 7);
+}
+Test(misc, larger_randomized) {
+    const string filename = "../data/larger";
+    NaiveSlp<uint32_t> slp;
+    slp.load_Bigrepair(filename.data(), false);
+    slp.makeBinaryTree();
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> pslp;
+    pslp.init(slp);
+
+    ifstream in(filename);
+    stringstream ss;
+    ss << in.rdbuf();
+    std::string pattern = ss.str();
+    const size_t m = pattern.length();
+    pslp.precompute_pattern(pattern);
+    for (int i = 0; i < 100; i++) {
+        const size_t pos1 = rand() % m;
+        const size_t pos2 = rand() % m;
+        const size_t lce_regular = lceToR(pslp, pos1, pos2);
+        const size_t lce_mlq = match_length_query(pslp, pos1, pos2);
+        //std::cout << pos1 << " " << pos2 << " " << lce_regular << " " << lce_mlq << std::endl;
+        cr_assert(lce_regular == lce_mlq);
+    }
 }
