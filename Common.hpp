@@ -25,6 +25,7 @@ const uint64_t mersenne_prime_exponent = 61;
 const uint64_t prime = ((uint64_t)1 << mersenne_prime_exponent) - 1; // 2^61 - 1
 
 ///////////////////////////////////////////// from Dominik
+// source: https://github.com/dominikkempa/lz77-to-slp/blob/main/src/karp_rabin_hashing.cpp
 
 std::uint64_t mod_mersenne(std::uint64_t a) {
   const std::uint64_t k = mersenne_prime_exponent;
@@ -94,11 +95,12 @@ std::uint64_t concat(
   return ret;
 }
 
-//////////////////////////////////////////// until here
 
 std::uint64_t hash_char(const char c) {
   return mod_mersenne((std::uint64_t)c);
 }
+
+//////////////////////////////////////////// until here
 
 void precompute_pattern_hashes(
           const std::string &pattern,
