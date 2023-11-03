@@ -385,7 +385,7 @@ public:
     }
 
     void precompute_pattern(const std::string &pattern) {
-        precompute_pattern_hashes(pattern, this->prefix_hash_, this->base_powers_, this->getAlphSize());
+        precompute_pattern_hashes(pattern, this->prefix_hash_, this->base_powers_, base);
     }
 
     uint64_t subpattern_hash(const uint64_t i, const uint64_t j) const {
