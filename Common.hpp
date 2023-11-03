@@ -509,9 +509,10 @@ uint64_t match_length_query
     return pattern_prefix_len;
 }
 
+template<class SlpT>
 uint64_t naive_MLQ(
     const string &pattern,
-    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> &slp,
+    SlpT &slp,
     size_t i,
     size_t j)
 {
