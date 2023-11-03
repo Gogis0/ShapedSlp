@@ -509,6 +509,22 @@ uint64_t match_length_query
     return pattern_prefix_len;
 }
 
+uint64_t naive_MLQ(
+    const string &pattern,
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> &slp,
+    size_t i,
+    size_t j)
+{
+    const size_t n = slp.getLen();
+    const size_t m = pattern.length();
+    uint64_t ans = 0;
+    while ((i < n) && (j < m) && (slp.charAt(i) == pattern[j])) {
+        i++;
+        j++;
+        ans++;
+    }
+    return ans; 
+}
 
 template<class SlpT>
 uint64_t lceToRBounded
