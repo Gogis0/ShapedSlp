@@ -2,6 +2,7 @@
 #include <criterion/criterion.h>
 #include <criterion/internal/assert.h>
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -19,8 +20,26 @@ void load_grammar(
     NaiveSlp<uint32_t> nslp;
     nslp.load_Bigrepair(filename.data(), false);
     nslp.makeBinaryTree();
+
     slp.init(nslp);
     //slp.printStatus(false);
+}
+
+uint64_t naive_MLQ(
+    const string &pattern,
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> &slp,
+    size_t i,
+    size_t j)
+{
+    const size_t n = slp.getLen();
+    const size_t m = pattern.length();
+    uint64_t ans = 0;
+    while ((i < n) && (j < m) && (slp.charAt(i) == pattern[j])) {
+        i++;
+        j++;
+        ans++;
+    }
+    return ans; 
 }
 
 Test(misc, powmod) {
@@ -118,6 +137,36 @@ Test(misc, larger_mlq_special) {
     //cout << pattern[38] << endl;
     cr_assert(match_length_query(slp, 112, 38) == 1);
     cr_assert(match_length_query(slp, 121, 54) == 1);
+}
+
+Test(misc, chr19_16_mlq_special) {
+    ifstream inp("../data/pattern");
+    stringstream ss;
+    ss << inp.rdbuf();
+    std::string pattern = ss.str();
+
+    const string grammar_file = "../data/chr19.16.fa.plain.slp";
+    ifstream in(grammar_file);
+    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> slp;
+    slp.load(in);
+    
+    const size_t n = slp.getLen();
+    const size_t m = pattern.length();
+    slp.precompute_pattern(pattern);
+    
+    //cases that were causing touble before
+    cr_assert(match_length_query(slp, 699280514, 92) == 0);
+    cr_assert(match_length_query(slp, 102524317, 136) == naive_MLQ(pattern, slp, 102524317, 136));
+
+    for (int i = 0; i < 100000; i++) {
+        const size_t pos1 = rand() % n;
+        const size_t pos2 = rand() % m;
+        const uint64_t lce_naive = naive_MLQ(pattern, slp, pos1, pos2);
+        const size_t lce_mlq = match_length_query(slp, pos1, pos2);
+        //std::cout << pos1 << " " << pos2 << " naive: " << lce_naive << " mlq: " << lce_mlq << std::endl;
+        cr_assert(lce_mlq == lce_naive);
+    }
+
 }
 
 Test(misc, chr19_slp_seq) {

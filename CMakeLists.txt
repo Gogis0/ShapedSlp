@@ -93,9 +93,6 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -std=c++17 -ggdb -Ofast -fstrict-aliasing
 add_executable(SlpEncBuild SlpEncBuild.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
 TARGET_LINK_LIBRARIES(SlpEncBuild sdsl)
 
-add_executable(SubstrBenchmark SubstrBenchmark.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
-TARGET_LINK_LIBRARIES(SubstrBenchmark sdsl)
-
 add_executable(Decompress Decompress.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
 TARGET_LINK_LIBRARIES(Decompress sdsl)
 
