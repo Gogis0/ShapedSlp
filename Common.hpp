@@ -511,7 +511,7 @@ uint64_t match_length_query
 
 template<class SlpT>
 uint64_t naive_MLQ(
-    const string &pattern,
+    const std::string &pattern,
     SlpT &slp,
     size_t i,
     size_t j)
