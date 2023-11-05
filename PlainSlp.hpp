@@ -56,6 +56,10 @@ public:
       return prefix_hash_.size();
     }
 
+    uint64_t getBasePower(const size_t i) const {
+      return base_powers_[i];
+    }
+
     uint64_t getNodeHash(var_t varId) const {
       return (varId < getAlphSize()) ? hash_char(varId) : kr_hash_[varId - getAlphSize()];
     }

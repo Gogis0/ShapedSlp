@@ -9,6 +9,7 @@
 #include <string>
 #include <queue>
 #include <stack>
+#include <vector>
 
 template<typename var_t>
 struct PairT
@@ -87,15 +88,14 @@ std::uint64_t concat(
     const std::uint64_t right_len,
     const std::uint64_t base) {
   return mod_mersenne(left_hash + mul_mod_mersenne(pow_mod_mersenne(base, right_len), right_hash));
-  const std::uint64_t pow = pow_mod_mersenne(
-      base, right_len);
-  const std::uint64_t tmp = mul_mod_mersenne(
-      left_hash, pow);
-  const std::uint64_t ret = mod_mersenne(
-      tmp + right_hash);
-  return ret;
 }
 
+std::uint64_t concat_precomputed_bases(
+    const std::uint64_t left_hash,
+    const std::uint64_t right_hash,
+    const std::uint64_t base_power) {
+  return mod_mersenne(left_hash + mul_mod_mersenne(base_power, right_hash));
+}
 
 std::uint64_t hash_char(const char c) {
   return mod_mersenne((std::uint64_t)c);
@@ -286,39 +286,6 @@ void completePrefixPath
   }
 }
 
-template<class SlpT>
-void getPrefixPathWithPositions
-(
- const SlpT & slp,
- std::stack<typename SlpT::nodeT> & path,
- std::stack<uint64_t> & positions,
- uint64_t pos
-) {
-  if (pos >= slp.getLen()) {
-    return;
-  }
-  //path.push(slp.getRootNode());
-  //positions.push(pos);
-  //if (pos) {
-  //path.push(slp.getRootNode());
-  //positions.push(pos);
-  path.push(slp.getChildNodeForPos_Root(pos));
-  positions.push(pos);
-  //}
-  //while (pos) {
-  //  path.push(slp.getChildNodeForPos(path.top(), pos)); // pos is modified to relative pos in a node
-  //  std::cout << "node id: " << std::get<1>(path.top()) << std::endl;
-  //  positions.push(pos);
-  //}
-  auto n = path.top();
-  while (std::get<0>(path.top()) > 1) {
-    n = slp.getChildNodeForPos(path.top(), pos);
-    path.push(n);
-    positions.push(pos);
-  }
-  assert(std::get<0>(path.top()) == pos);
-}
-
 /*!
  * modify the stack 'path' to point the highest node that is adjacent to the node path.top()
  * return false when such a node does not exist
@@ -412,6 +379,50 @@ uint64_t lceToR
 }
 
 template<class SlpT>
+void getPrefixPathWithPositions
+(
+ const SlpT & slp,
+ std::stack<typename SlpT::nodeT> & path,
+ std::stack<uint64_t> & positions,
+ uint64_t pos
+) {
+  if (pos >= slp.getLen()) {
+    return;
+  }
+  //path.push(slp.getRootNode());
+  //positions.push(pos);
+  //if (pos) {
+  //path.push(slp.getRootNode());
+  //positions.push(pos);
+  path.push(slp.getChildNodeForPos_Root(pos));
+  positions.push(pos);
+  //}
+  //while (pos) {
+  //  path.push(slp.getChildNodeForPos(path.top(), pos)); // pos is modified to relative pos in a node
+  //  std::cout << "node id: " << std::get<1>(path.top()) << std::endl;
+  //  positions.push(pos);
+  //}
+  //auto n = path.top();
+  //while (std::get<0>(n) > 1) {
+  //  auto x = slp.getChildNodeForPos(path.top(), pos);
+  //  if (std::get<2>(x) == 0) {
+  //    path.push(n);
+  //    positions.push(pos);
+  //  }
+  //  n = x;
+  //}
+  //path.push(n);
+  //positions.push(pos);
+  auto n = path.top();
+  while (std::get<0>(path.top()) > 1) {
+    n = slp.getChildNodeForPos(path.top(), pos);
+    path.push(n);
+    positions.push(pos);
+  }
+  assert(std::get<0>(path.top()) == pos);
+}
+
+template<class SlpT>
 uint64_t match_length_query
 (
     const SlpT & slp,
@@ -431,6 +442,8 @@ uint64_t match_length_query
     auto p = positions.top();
     positions.pop();
 
+    const size_t m = slp.getPatternLen();
+    const size_t alpha = slp.getAlphSize();
     uint64_t node = std::get<1>(x), last_from_left = node;
     uint64_t pattern_prefix_hash = slp.subpattern_hash(pos_p, pos_p); // hash of the first prefix character
     //std :: cout << "ph: " << prefix_hash << std:: endl;
@@ -452,16 +465,18 @@ uint64_t match_length_query
     while (!path.empty()) {
         //std::cout << " pos: " << p  << " left len: " << slp.getNodeLen(left_sibling) << " right len: " << slp.getNodeLen(right_sibling) << std::endl; 
         //std::cout << "subpattern hash: " << pattern_prefix_hash<< std::endl; 
-        //std::cout << "len: " << std::get<0>(x) << " hash: " << slp.getNodeHash(std::get<1>(x)) << std::endl;
         if (!direction) { // I come from the left child, the prefix can be extended
           last_from_left = node;
-          const uint64_t right_child = slp.getRight(node - slp.getAlphSize());
+          const uint64_t right_child = slp.getRight(node - alpha);
           const uint64_t right_child_len = slp.getNodeLen(right_child);
 
-          if ((pos_p + pattern_prefix_len + right_child_len) >= slp.getPatternLen()) break;
+          if ((pos_p + pattern_prefix_len + right_child_len) >= m) break;
           //if (pos_p == 58028359) std::cout << "came from left: " << std::endl;
           const uint64_t right_hash = slp.getNodeHash(right_child);
-          pattern_prefix_hash = concat(pattern_prefix_hash, right_hash, pattern_prefix_len, base);
+          pattern_prefix_hash = concat_precomputed_bases(pattern_prefix_hash, right_hash, slp.getBasePower(pattern_prefix_len));
+          //const uint64_t pattern_prefix_hash_test = concat(pattern_prefix_hash, right_hash, pattern_prefix_len, base);
+          //std::cout << mul_mod_mersenne(right_hash, pow_mod_mersenne(base, right_child_len)) << " " << mul_mod_mersenne(right_hash, slp.getBasePower(right_child_len)) << std::endl;
+          //std::cout << pattern_prefix_hash << " " << pattern_prefix_hash_test << std::endl;
           subpattern_hash = slp.subpattern_hash(pos_p, pos_p+pattern_prefix_len+right_child_len-1);
           if (pattern_prefix_hash != subpattern_hash) break;
           pattern_prefix_len += right_child_len;
@@ -469,6 +484,7 @@ uint64_t match_length_query
           //std::cout << "pattern pref len: " << pattern_prefix_len<< std::endl;
           //if (pos_p == 58028359) std::cout << " pattern_prefix_hash: " << pattern_prefix_hash << " slp pref hash: " << subpattern_hash << std::endl;
         }
+        //std::cout << "len: " << std::get<0>(x) << " hash: " << slp.getNodeHash(std::get<1>(x)) << std::endl;
 
         //std::cout << "act len: " << std::get<0>(x) << " direction: " << direction
         //<< " pattern_prefix_len: " << pattern_prefix_len << std::endl;
@@ -481,20 +497,20 @@ uint64_t match_length_query
     }
     //std::cout << "act len: " << std::get<0>(x) << " dir: " << direction <<  " preflen:" << pattern_prefix_len << std::endl;
 
-    if (last_from_left < slp.getAlphSize()) return pattern_prefix_len;
-    if (!direction) node = slp.getRight(node - slp.getAlphSize());
-    else            node = slp.getRight(last_from_left - slp.getAlphSize());
+    if (last_from_left < alpha) return pattern_prefix_len;
+    if (!direction) node = slp.getRight(node - alpha);
+    else            node = slp.getRight(last_from_left - alpha);
 
     // RE-DESCENT
     while (true) {
-      if (node < slp.getAlphSize()) {
+      if (node < alpha) {
         const uint64_t last_char_hash = slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+pattern_prefix_len);
         pattern_prefix_len += (node == last_char_hash);
         break;
       }
       //if (pos_p == 58028359)std::cout << "act len: " << slp.getNodeLen(node) <<  " preflen:" << pattern_prefix_len << std::endl;
-      const uint64_t left_child = slp.getLeft(node - slp.getAlphSize());
-      const uint64_t right_child = slp.getRight(node - slp.getAlphSize());
+      const uint64_t left_child = slp.getLeft(node - alpha);
+      const uint64_t right_child = slp.getRight(node - alpha);
       const uint64_t left_size = slp.getNodeLen(left_child);
       const uint64_t left_hash = slp.getNodeHash(left_child);
       const uint64_t new_pattern_prefix_len = pattern_prefix_len+left_size;
