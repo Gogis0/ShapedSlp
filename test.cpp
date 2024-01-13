@@ -127,32 +127,33 @@ Test(misc, mlq_special_cases) {
     cr_assert(match_length_query(slp, 121, 54) == 1);
 }
 
-Test(misc, chr19_16_mlq_agains_naive) {
-    std::string pattern = load_pattern("../data/pattern2");
-
-    const string grammar_file = "../data/chr19.16.fa.plain.slp";
-    ifstream in(grammar_file);
-    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> slp;
-    slp.load(in);
-    
-    const size_t n = slp.getLen();
-    const size_t m = pattern.length();
-    slp.precompute_pattern(pattern);
-    
-    //cases that were causing touble before
-    cr_assert(match_length_query(slp, 699280514, 92) == 0);
-    cr_assert(match_length_query(slp, 102524317, 136) == naive_MLQ(pattern, slp, 102524317, 136));
-
-    for (int i = 0; i < 100000; i++) {
-        const size_t pos1 = rand() % n;
-        const size_t pos2 = rand() % m;
-        const uint64_t lce_naive = naive_MLQ(pattern, slp, pos1, pos2);
-        const size_t lce_mlq = match_length_query(slp, pos1, pos2);
-        //std::cout << pos1 << " " << pos2 << " naive: " << lce_naive << " mlq: " << lce_mlq << std::endl;
-        cr_assert(lce_mlq == lce_naive);
-    }
-
-}
+// large test with big files that do not fit on github 
+//Test(misc, chr19_16_mlq_agains_naive) {
+//    std::string pattern = load_pattern("../data/pattern2");
+//
+//    const string grammar_file = "../data/chr19.16.fa.plain.slp";
+//    ifstream in(grammar_file);
+//    PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> slp;
+//    slp.load(in);
+//    
+//    const size_t n = slp.getLen();
+//    const size_t m = pattern.length();
+//    slp.precompute_pattern(pattern);
+//    
+//    //cases that were causing touble before
+//    cr_assert(match_length_query(slp, 699280514, 92) == 0);
+//    cr_assert(match_length_query(slp, 102524317, 136) == naive_MLQ(pattern, slp, 102524317, 136));
+//
+//    for (int i = 0; i < 100000; i++) {
+//        const size_t pos1 = rand() % n;
+//        const size_t pos2 = rand() % m;
+//        const uint64_t lce_naive = naive_MLQ(pattern, slp, pos1, pos2);
+//        const size_t lce_mlq = match_length_query(slp, pos1, pos2);
+//        //std::cout << pos1 << " " << pos2 << " naive: " << lce_naive << " mlq: " << lce_mlq << std::endl;
+//        cr_assert(lce_mlq == lce_naive);
+//    }
+//
+//}
 
 Test(misc, chr19slp_small_pattern) {
     const string filename = "../data/chr19.1.fa";
