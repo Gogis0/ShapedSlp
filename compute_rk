@@ -1,6 +1,6 @@
 #!/bin/python3
 
-b = 256
+b = 411910476928516559
 prime = (1 << 61) - 1
 
 def rk(s):
@@ -13,6 +13,7 @@ def rk(s):
         hashes[i] = h
         powers[i] = base
         base = (base * b) % prime
+    print("hash:", hashes[-1])
 
 
     for i in range(1, len(s)):
@@ -24,9 +25,9 @@ def rk(s):
     return powers[-1], hashes[-1]
 
 
-s = 'GGGAACTTCTTCT'
+s = 'ATTCGGATTAGGATTAGG'
 l = 'AGTATATTATAGTAGAGAGGAGAGCGGCGACTACTTATATTTTTTTTTTTCGAGCGAGACGACGGAGGTTTTTTTTTTTCGAGATTCTGCTACGATACGTTTTTTTTTTTCGAGCGCAGATC'
 #print(s)
 #print(rk(s[3:6]))
 #print(rk("ATTCGGATTAGGATTAGG"))
-print(rk(l[:23]))
+print(rk(s))

@@ -45,7 +45,7 @@ Test(misc, load_grammar) {
     PlainSlp<uint32_t, FixedBitLenCode<>, FixedBitLenCode<>> slp;
     load_grammar(filename, slp);
     cr_assert(slp.getLen() == 18);
-    cr_assert(slp.getHashWhole() == 2225879177060430003);
+    cr_assert(slp.getHashWhole() == 1885666546310520423);
 }
 
 Test(misc, pattern_hash_small) {
