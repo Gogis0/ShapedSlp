@@ -403,14 +403,13 @@ public:
           const uint64_t r_hash = (rules_[i].right < getAlphSize()) ?
                                   hash_char(rules_[i].right) : hashVec[rules_[i].right - getAlphSize()];
 
-          const uint64_t len_left = (rules_[i].left < getAlphSize()) ?
-                                    1 : lenVec[rules_[i].left - getAlphSize()];
+          const uint64_t len_right = (rules_[i].right < getAlphSize()) ?
+                                    1 : lenVec[rules_[i].right - getAlphSize()];
           //std::cout << "lenVec[i] = " << len_left << std::endl;
-          hashVec[i] = concat(l_hash, r_hash, len_left, base);
+          hashVec[i] = concat(l_hash, r_hash, len_right, base);
           //std::cout << "hashVec[" << i << "] = " << hashVec[i] << std::endl;
       }
       //std::cout << "hashVec[" << getNumRules()-1 << "] = " << hashVec[getNumRules()-1] << std::endl;
-      //std::cout << std::endl;
     }
 
 

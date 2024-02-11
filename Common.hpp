@@ -22,12 +22,13 @@ struct PairT
   };
 };
 
-const uint64_t mersenne_prime_exponent = 61;
-const uint64_t prime = ((uint64_t)1 << mersenne_prime_exponent) - 1; // 2^61 - 1
-uint64_t base = 411910476928516559;
 
 ///////////////////////////////////////////// from Dominik
 // source: https://github.com/dominikkempa/lz77-to-slp/blob/main/src/karp_rabin_hashing.cpp
+
+const uint64_t mersenne_prime_exponent = 61;
+const uint64_t prime = ((uint64_t)1 << mersenne_prime_exponent) - 1; // 2^61 - 1
+uint64_t base = 411910476928516559; // randomly generated
 
 std::uint64_t mod_mersenne(std::uint64_t a) {
   const std::uint64_t k = mersenne_prime_exponent;
@@ -67,6 +68,7 @@ std::uint64_t mul_mod_mersenne(
   return lo == p ? 0 : lo;
 }
 
+// takes O(log n) time
 std::uint64_t pow_mod_mersenne(
     const std::uint64_t a,
     std::uint64_t n) {
@@ -74,6 +76,7 @@ std::uint64_t pow_mod_mersenne(
   std::uint64_t pow = mod_mersenne(a);
   std::uint64_t ret = mod_mersenne(1);
   while (n > 0) {
+    //std::cout << n << std::endl;
     if (n & 1)
       ret = mul_mod_mersenne(ret, pow);
     pow = mul_mod_mersenne(pow, pow);
@@ -87,14 +90,8 @@ std::uint64_t concat(
     const std::uint64_t right_hash,
     const std::uint64_t right_len,
     const std::uint64_t base) {
-  return mod_mersenne(left_hash + mul_mod_mersenne(pow_mod_mersenne(base, right_len), right_hash));
-}
-
-std::uint64_t concat_precomputed_bases(
-    const std::uint64_t left_hash,
-    const std::uint64_t right_hash,
-    const std::uint64_t base_power) {
-  return mod_mersenne(left_hash + mul_mod_mersenne(base_power, right_hash));
+  return mod_mersenne(mul_mod_mersenne(pow_mod_mersenne(base, right_len), left_hash)
+                      + right_hash);
 }
 
 std::uint64_t hash_char(const char c) {
@@ -103,38 +100,46 @@ std::uint64_t hash_char(const char c) {
 
 //////////////////////////////////////////// until here
 
-void precompute_pattern_hashes(
-          const std::string &pattern,
-          std::vector<uint64_t> &hashes,
-          std::vector<uint64_t> &powers,
-          uint64_t base) {
+void precompute_pattern_hashes(const std::string& pattern, std::vector<uint64_t>& hashes, std::vector<uint64_t>& powers, uint64_t base) {
     int m = pattern.size();
     hashes.resize(m);
     powers.resize(m);
 
-    uint64_t h = 0, b = 1;
+    uint64_t hash = 0;
+    uint64_t power = 1;
+
+    // precompute: powers[i] = base^i
     for (std::uint64_t i = 0; i < m; i++) {
-      h = mod_mersenne(h + mul_mod_mersenne(b, pattern[i]));
-      hashes[i] = h;
-      powers[i] = b;
-      b = mul_mod_mersenne(b, base);
+        powers[i] = power;
+        power = mul_mod_mersenne(power, base);
     }
-    //std::cout << "final pattern hash = " << hashes[m-1] << std::endl;
+
+    hashes[0] = hash_char(pattern[0]);
+    // precompute: hashes[i] = P[0] * x^(m-1) + P[1] * x^(m-2) + ... + P[i-1]
+    for (std::uint64_t i = 1; i < m; i++) {
+        hashes[i] = mod_mersenne(mul_mod_mersenne(hashes[i-1], base) + hash_char(pattern[i]));
+    }
 }
 
 uint64_t compute_subpattern_hash(const std::vector<uint64_t> &prefix_hashes,
                                  const std::vector<uint64_t> &base_powers,
                                  const int i,
                                  const int j) {
-    if (i == 0) return prefix_hashes[j];
+    if (i == 0) {
+        return prefix_hashes[j];
+    }
+    
     const uint64_t pref_i = prefix_hashes[i - 1];
-    uint64_t pref_j = prefix_hashes[j];
-    const uint64_t base_pow_inv = pow_mod_mersenne(base_powers[i], prime-2);
-    const uint64_t hash_diff = ((long long)(pref_j - pref_i) + ((pref_i > pref_j) ? prime : 0)) % prime;
-    const uint64_t ans = mul_mod_mersenne(hash_diff, base_pow_inv);
-    return ans;
+    const uint64_t pref_j = prefix_hashes[j];
+    const uint64_t base_pow = base_powers[j - i + 1];
+    
+    long long int hash_diff = pref_j;
+    if (pref_i > 0) {
+        hash_diff = (hash_diff - mul_mod_mersenne(pref_i, base_pow) + prime) % prime;
+    }
+    
+    return hash_diff;
 }
-
 
 void padVLine
 (
@@ -378,6 +383,7 @@ uint64_t lceToR
   return l;
 }
 
+// returns the path to the node X such that exp(X) prefixes T[pos..n]
 template<class SlpT>
 void getPrefixPathWithPositions
 (
@@ -388,19 +394,8 @@ void getPrefixPathWithPositions
   if (pos >= slp.getLen()) {
     return;
   }
-  //path.push(slp.getRootNode());
-  //positions.push(pos);
-  //if (pos) {
-  //path.push(slp.getRootNode());
-  //positions.push(pos);
   auto n = slp.getChildNodeForPos_Root(pos);
-  //}
-  //while (pos) {
-  //  path.push(slp.getChildNodeForPos(path.top(), pos)); // pos is modified to relative pos in a node
-  //  std::cout << "node id: " << std::get<1>(path.top()) << std::endl;
-  //  positions.push(pos);
-  //}
-  //auto n = path.top();
+
   while (std::get<0>(n) > 1) {
     auto x = slp.getChildNodeForPos(n, pos);
     if (std::get<2>(x) == 0) {
@@ -410,16 +405,34 @@ void getPrefixPathWithPositions
     n = x;
   }
   path.push(n);
-  //auto n = path.top();
-  //while (std::get<0>(path.top()) > 1) {
-  //  n = slp.getChildNodeForPos(path.top(), pos);
-  //  path.push(n);
-  //  positions.push(pos);
-  //}
 }
 
 template<class SlpT>
-uint64_t match_length_query
+void getSuffixPathWithPositions
+(
+ const SlpT & slp,
+ std::stack<typename SlpT::nodeT> & path,
+ uint64_t pos
+) {
+  if (pos >= slp.getLen()) {
+    return;
+  }
+  auto n = slp.getChildNodeForPos_Root(pos);
+
+  while (std::get<0>(n) > 1) {
+    auto x = slp.getChildNodeForPos(n, pos);
+    if (std::get<2>(x) == 1) {
+      path.push(n);
+      //std::cout << "node len: " << std::get<0>(n) << std::endl;
+    }
+    n = x;
+  }
+  path.push(n);
+}
+
+// compute LCP(i, j) w.h.p. in O(grammar_height) time
+template<class SlpT>
+uint64_t LCP
 (
     const SlpT & slp,
     const uint64_t pos_s, // position in the string
@@ -434,54 +447,34 @@ uint64_t match_length_query
 
     const size_t m = slp.getPatternLen();
     const size_t alpha = slp.getAlphSize();
-    uint64_t node = std::get<1>(x), last_from_left = node;
+    uint64_t node = std::get<1>(x);
+    uint64_t last_from_left = node;
     uint64_t pattern_prefix_hash = slp.subpattern_hash(pos_p, pos_p); // hash of the first prefix character
-    //std :: cout << "ph: " << prefix_hash << std:: endl;
-    uint64_t subpattern_hash = 0; // hash of the first prefix character
+    uint64_t subpattern_hash = 0; // hash of the first T prefix character
     uint64_t pattern_prefix_len = 1;
-    bool direction = true;
 
-    //std::cout << "node: " << slp.charAt(pos_s) << " ph: " << pattern_prefix_hash << std:: endl;
     if (node != pattern_prefix_hash) return 0;
-    //for (int i = 0; i < 8; i++) std::cout << slp.charAt(pos_s+i);
-    //std::cout << std::endl;
-
-    //if (pos_p == 58028359) {
-    //  for (int i = 0; i < 138; i++) std::cout << slp.charAt(pos_s+3+i);
-    //  std::cout << std::endl;
-    //}
 
     // ASCENT
     while (!path.empty()) {
-        //std::cout << " pos: " << p  << " left len: " << slp.getNodeLen(left_sibling) << " right len: " << slp.getNodeLen(right_sibling) << std::endl; 
-        //std::cout << "subpattern hash: " << pattern_prefix_hash<< std::endl; 
         last_from_left = node;
         x = path.top();
         path.pop();
         node = std::get<1>(x);
-          const uint64_t right_child = slp.getRight(node - alpha);
-          const uint64_t right_child_len = slp.getNodeLen(right_child);
 
-          if ((pos_p + pattern_prefix_len + right_child_len) >= m) break;
-          const uint64_t right_hash = slp.getNodeHash(right_child);
-          //pattern_prefix_hash = concat_precomputed_bases(pattern_prefix_hash, right_hash, slp.getBasePower(pattern_prefix_len));
-          subpattern_hash = slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+pattern_prefix_len+right_child_len-1);
-          //if (pos_p == 54 && pos_s == 121) std::cout << "rl: " << right_child_len << " rh: " << right_hash << std::endl;
-          //std::cout << "pattern pref len: " << pattern_prefix_len<< std::endl;
-          if (right_hash != subpattern_hash) break;
-          pattern_prefix_len += right_child_len;
-          //if (pos_p == 54) std::cout << "right len: " << right_child_len << std::endl;
-        //std::cout <<  << std::endl;
+        const uint64_t right_child = slp.getRight(node - alpha);
+        const uint64_t right_child_len = slp.getNodeLen(right_child);
+        const uint64_t new_pattern_prefix_len = pattern_prefix_len + right_child_len;
 
-        //std::cout << "act len: " << std::get<0>(x) << " direction: " << direction
-        //<< " pattern_prefix_len: " << pattern_prefix_len << std::endl;
+        if ((pos_p + new_pattern_prefix_len) >= m) break;
+        const uint64_t right_hash = slp.getNodeHash(right_child);
+        subpattern_hash = slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+new_pattern_prefix_len-1);
+        if (right_hash != subpattern_hash) break;
+        pattern_prefix_len += right_child_len;
     }
-    //if (pos_p == 54 && pos_s == 121) std::cout << "act len: " << std::get<0>(x) << " preflen:" << pattern_prefix_len << std::endl;
 
-      //std::cout << "len: " << slp.getNodeLen(node) << std::endl;
     if (node < alpha) return pattern_prefix_len;
     node = slp.getRight(node - alpha);
-    //else            node = slp.getRight(last_from_left - alpha);
 
     // RE-DESCENT
     while (true) {
@@ -490,31 +483,93 @@ uint64_t match_length_query
         pattern_prefix_len += (node == last_char_hash);
         break;
       }
-      //if (pos_p == 58028359)std::cout << "act len: " << slp.getNodeLen(node) <<  " preflen:" << pattern_prefix_len << std::endl;
       const uint64_t left_child = slp.getLeft(node - alpha);
       const uint64_t right_child = slp.getRight(node - alpha);
       const uint64_t left_size = slp.getNodeLen(left_child);
       const uint64_t left_hash = slp.getNodeHash(left_child);
       const uint64_t new_pattern_prefix_len = pattern_prefix_len+left_size;
-      //if (pos_p == 54 && pos_s == 121) std::cout << "left_size" << left_size << std::endl;
-      //if (pos_p == 54 && pos_s == 121) std::cout << "left_hash: " << left_hash << " prefix_hash: " << slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+new_pattern_prefix_len-1) << std::endl;
       if (((pos_p + new_pattern_prefix_len - 1) >= m) ||
           (left_hash != slp.subpattern_hash(pos_p+pattern_prefix_len, pos_p+new_pattern_prefix_len-1))) {
-          //std::cout << "going left: " << std::endl;
           node = left_child;
       } else {
         node = right_child;
-          //std::cout << "going right: " << std::endl;
         pattern_prefix_len += left_size;
       }
     }
-
-    //std::cout << "ans: " << pattern_prefix_len << std::endl;
     return pattern_prefix_len;
 }
 
+// compute LCS(i, j) w.h.p. in O(grammar_height) time
 template<class SlpT>
-uint64_t naive_MLQ(
+uint64_t LCS
+(
+    const SlpT & slp,
+    const uint64_t pos_s, // position in the string
+    const uint64_t pos_p // position in the pattern
+)
+{
+    std::stack<typename SlpT::nodeT> path;
+    getSuffixPathWithPositions(slp, path, pos_s);
+
+    auto x = path.top();
+    path.pop();
+
+    const size_t alpha = slp.getAlphSize();
+    uint64_t node = std::get<1>(x);
+    uint64_t last_from_right = node;
+    uint64_t pattern_suffix_hash = slp.subpattern_hash(pos_p, pos_p); // hash of the first prefix character
+    uint64_t subpattern_hash = 0; // hash of the first T prefix character
+    uint64_t pattern_suffix_len = 1;
+
+    if (node != pattern_suffix_hash) return 0;
+
+    // ASCENT
+    while (!path.empty()) {
+        last_from_right = node;
+        x = path.top();
+        path.pop();
+        node = std::get<1>(x);
+
+        const uint64_t left_child = slp.getLeft(node - alpha);
+        const uint64_t left_child_len = slp.getNodeLen(left_child);
+        const uint64_t new_pattern_suffix_len = pattern_suffix_len + left_child_len;
+
+        if ((long long)(pos_p - new_pattern_suffix_len+1) < 0) break;
+        const uint64_t left_hash = slp.getNodeHash(left_child);
+        subpattern_hash = slp.subpattern_hash(pos_p-new_pattern_suffix_len+1, pos_p-pattern_suffix_len);
+        if (left_hash != subpattern_hash) break;
+        pattern_suffix_len += left_child_len;
+    }
+
+    if (node < alpha) return pattern_suffix_len;
+    node = slp.getLeft(node - alpha);
+
+    // RE-DESCENT
+    while (true) {
+      if (node < alpha) {
+        const uint64_t last_char_hash = slp.subpattern_hash(pos_p-pattern_suffix_len, pos_p-pattern_suffix_len);
+        pattern_suffix_len += (node == last_char_hash);
+        break;
+      }
+      const uint64_t left_child = slp.getLeft(node - alpha);
+      const uint64_t right_child = slp.getRight(node - alpha);
+      const uint64_t right_size = slp.getNodeLen(right_child);
+      const uint64_t right_hash = slp.getNodeHash(right_child);
+      const uint64_t new_pattern_prefix_len = pattern_suffix_len + right_size;
+      if (((long long)(pos_p - new_pattern_prefix_len+1) < 0) ||
+          (right_hash != slp.subpattern_hash(pos_p-new_pattern_prefix_len+1, pos_p-pattern_suffix_len))) {
+          node = right_child;
+      } else {
+        node = left_child;
+        pattern_suffix_len += right_size;
+      }
+    }
+    return pattern_suffix_len;
+}
+
+// compute LCP(i, j) in O(LCP(i, j) * grammar_height) time
+template<class SlpT>
+uint64_t naive_LCP(
     const std::string &pattern,
     SlpT &slp,
     size_t i,
@@ -526,6 +581,23 @@ uint64_t naive_MLQ(
     while ((i < n) && (j < m) && (slp.charAt(i) == pattern[j])) {
         i++;
         j++;
+        ans++;
+    }
+    return ans; 
+}
+
+// compute LCS(i, j) in O(LCS(i, j) * grammar_height) time
+template<class SlpT>
+uint64_t naive_LCS(
+    const std::string &pattern,
+    SlpT &slp,
+    size_t i,
+    size_t j)
+{
+    uint64_t ans = 0;
+    while ((i >= 0) && (j >= 0) && (slp.charAt(i) == pattern[j])) {
+        i--;
+        j--;
         ans++;
     }
     return ans; 
