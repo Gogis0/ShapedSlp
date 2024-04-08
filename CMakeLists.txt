@@ -96,8 +96,8 @@ TARGET_LINK_LIBRARIES(SlpEncBuild sdsl)
 add_executable(Decompress Decompress.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
 TARGET_LINK_LIBRARIES(Decompress sdsl)
 
-add_executable(test test.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
-TARGET_LINK_LIBRARIES(test sdsl criterion)
+# add_executable(test test.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
+# TARGET_LINK_LIBRARIES(test sdsl criterion)
 
 add_executable(LceBenchmark LceBenchmark.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
 TARGET_LINK_LIBRARIES(LceBenchmark sdsl)
